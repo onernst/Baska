@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test Dashboard - Item Checklist</title>
+</head>
+<body>
+<h1>Test Dashboard Ready</h1>
+<p>The main dashboard file is at: <strong>c:\Users\Administrator\Desktop\items_checklist_dashboard.html</strong></p>
+
+<h2>Test Scenarios</h2>
+
+<h3>1. Basic Item Adding</h3>
+<ul>
+<li>Add item: "Pen", Qty: 5, Unit: unit, Store: "Walmart"</li>
+<li>Add item: "Tape", Qty: 2, Unit: box, Store: "Target"</li>
+<li>Add item: "Book", Qty: 1, Unit: unit, Store: "Costco"</li>
+</ul>
+
+<h3>2. Store Proximity Testing</h3>
+<ul>
+<li>Add items with store names: "Costco", "Walmart", "Target"</li>
+<li>Click "Enable" in the Stores panel</li>
+<li>Grant location permissions</li>
+<li>Move near a store to test notifications</li>
+</ul>
+
+<h3>3. Unit/Box Display</h3>
+<ul>
+<li>Add item with Qty: 1, Unit: unit → displays "1 unit"</li>
+<li>Add item with Qty: 5, Unit: unit → displays "5 units"</li>
+<li>Add item with Qty: 1, Unit: box → displays "1 box"</li>
+<li>Add item with Qty: 3, Unit: box → displays "3 boxes"</li>
+</ul>
+
+<h3>4. Demo Data</h3>
+<p>Click "Load Demo Items" button to add sample grocery items with stores.</p>
+
+<h2>Current Features</h2>
+<ul>
+<li>✅ Add items with name, quantity, unit type (unit/box), and store</li>
+<li>✅ Edit items in details panel</li>
+<li>✅ Store management panel</li>
+<li>✅ Location tracking with Google Maps Places API</li>
+<li>✅ Proximity notifications (3-mile radius)</li>
+<li>✅ Filter items by store</li>
+<li>✅ Local storage persistence</li>
+</ul>
+
+<h2>Important Notes</h2>
+<ul>
+<li><strong>Google Maps API Key</strong>: Replace <code>YOUR_API_KEY</code> on line 7 of the main file with your actual API key</li>
+<li><strong>Permissions</strong>: Location and notification permissions are required for proximity alerts</li>
+<li><strong>Browser</strong>: Test in a modern browser (Chrome, Firefox, Safari, Edge)</li>
+</ul>
+
+<p><a href="items_checklist_dashboard.html" target="_blank">Open Main Dashboard</a></p>
+
+</body>
+</html>

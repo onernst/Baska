@@ -1,0 +1,102 @@
+/* Baska: design tokens. Light palette on :root; dark palette via prefers-color-scheme and the manual [data-theme] toggle. */
+
+/* =========================================================
+   Tokens — "Market notebook"
+   ========================================================= */
+:root {
+  --bg: #F6F2EA;
+  --surface: #FFFDF8;
+  --surface-2: #FAF6EE;
+  --sunken: #EFE9DD;
+  --ink: #1E2A24;
+  --ink-2: #36443C;
+  --muted: #5C675F;        /* text-safe muted (AA on paper + surface) */
+  --muted-2: #6F7A72;      /* decorative / icons */
+  --line: #E6DFD2;
+  --line-strong: #D3C9B6;
+  --primary: #2F6B4F;
+  --primary-hover: #25563F;
+  --on-primary: #FFFFFF;
+  --tint: #E3EFE7;
+  --tint-ink: #24573F;
+  --tomato: #D2492A;
+  --tomato-ink: #A63A1F;
+  --tomato-tint: #FBE4DC;
+  --amber: #C98A1B;
+  --amber-ink: #7D520A;
+  --amber-tint: #F7EAD0;
+  --hold-ink: #5C675F;
+  --hold-tint: #ECE6DA;
+  --margin-line: rgba(210, 73, 42, .26);
+  --strike: #36443C;
+  --toast-bg: #1E2A24;
+  --toast-ink: #F6F2EA;
+  --toast-accent: #A6DDBD;
+  --backdrop: rgba(30, 42, 36, .38);
+  --glow: rgba(47, 107, 79, .07);
+  --glow-2: rgba(201, 138, 27, .06);
+  --shadow-1: 0 1px 0 rgba(70, 52, 20, .03), 0 1px 2px rgba(70, 52, 20, .06);
+  --shadow-2: 0 1px 0 rgba(70, 52, 20, .04), 0 10px 28px -12px rgba(70, 52, 20, .22);
+  --shadow-3: 0 30px 70px -24px rgba(40, 30, 10, .38), 0 2px 6px rgba(40, 30, 10, .06);
+  --focus-ring: rgba(47, 107, 79, .38);
+  --av-s-bg: 70%; --av-l-bg: 90%; --av-s-fg: 55%; --av-l-fg: 32%;
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .28 0 0 0 0 .15 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+
+  --r-sm: 10px;
+  --r: 14px;
+  --r-lg: 18px;
+  --header-h: 60px;
+  --tab-h: 64px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  --font-ui: 'Instrument Sans', 'Inter Tight', 'Segoe UI', system-ui, sans-serif;
+  --ease-spring: cubic-bezier(.3, 1.55, .5, 1);
+  --ease-out: cubic-bezier(.2, .9, .25, 1);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121815; --surface: #1A221E; --surface-2: #1E2723; --sunken: #151C18;
+    --ink: #ECE7DC; --ink-2: #D2CCC0; --muted: #A5AFA7; --muted-2: #8C978E;
+    --line: #2A3530; --line-strong: #3B4842;
+    --primary: #7CC49B; --primary-hover: #96D3AF; --on-primary: #0E1712;
+    --tint: #1E3428; --tint-ink: #A3DABA;
+    --tomato: #F08466; --tomato-ink: #F6A48E; --tomato-tint: #3A211A;
+    --amber: #E3AE52; --amber-ink: #EEC47E; --amber-tint: #362A15;
+    --hold-ink: #B5BDB6; --hold-tint: #26302B;
+    --margin-line: rgba(240, 132, 102, .2);
+    --strike: #C9C3B7;
+    --toast-bg: #ECE7DC; --toast-ink: #121815; --toast-accent: #24573F;
+    --backdrop: rgba(5, 9, 7, .62);
+    --glow: rgba(124, 196, 155, .06); --glow-2: rgba(227, 174, 82, .04);
+    --shadow-1: 0 1px 0 rgba(0, 0, 0, .25);
+    --shadow-2: 0 12px 30px -14px rgba(0, 0, 0, .6);
+    --shadow-3: 0 30px 70px -20px rgba(0, 0, 0, .7);
+    --focus-ring: rgba(124, 196, 155, .5);
+    --av-s-bg: 32%; --av-l-bg: 26%; --av-s-fg: 70%; --av-l-fg: 82%;
+    --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .9 0 0 0 0 .9 0 0 0 0 .85 0 0 0 .035 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121815; --surface: #1A221E; --surface-2: #1E2723; --sunken: #151C18;
+  --ink: #ECE7DC; --ink-2: #D2CCC0; --muted: #A5AFA7; --muted-2: #8C978E;
+  --line: #2A3530; --line-strong: #3B4842;
+  --primary: #7CC49B; --primary-hover: #96D3AF; --on-primary: #0E1712;
+  --tint: #1E3428; --tint-ink: #A3DABA;
+  --tomato: #F08466; --tomato-ink: #F6A48E; --tomato-tint: #3A211A;
+  --amber: #E3AE52; --amber-ink: #EEC47E; --amber-tint: #362A15;
+  --hold-ink: #B5BDB6; --hold-tint: #26302B;
+  --margin-line: rgba(240, 132, 102, .2);
+  --strike: #C9C3B7;
+  --toast-bg: #ECE7DC; --toast-ink: #121815; --toast-accent: #24573F;
+  --backdrop: rgba(5, 9, 7, .62);
+  --glow: rgba(124, 196, 155, .06); --glow-2: rgba(227, 174, 82, .04);
+  --shadow-1: 0 1px 0 rgba(0, 0, 0, .25);
+  --shadow-2: 0 12px 30px -14px rgba(0, 0, 0, .6);
+  --shadow-3: 0 30px 70px -20px rgba(0, 0, 0, .7);
+  --focus-ring: rgba(124, 196, 155, .5);
+  --av-s-bg: 32%; --av-l-bg: 26%; --av-s-fg: 70%; --av-l-fg: 82%;
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .9 0 0 0 0 .9 0 0 0 0 .85 0 0 0 .035 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  color-scheme: dark;
+}
