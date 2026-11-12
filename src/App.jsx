@@ -1,21 +1,21 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { fetchItems, createItem, toggleItemDone, fetchStores } from './api';
 
-const storeOptions = ['All', 'Costco', 'Walmart', 'Target'];
-
 export default function App() {
   const [items, setItems] = useState([]);
+  const [stores, setStores] = useState([]);
   const [selectedStore, setSelectedStore] = useState('All');
-  const [itemName, setItemName] = useState('');
+  const [draft, setDraft] = useState({
+    name: '',
+    qty: 1,
+    store: '',
+    addedBy: '',
+  });
   const [showDone, setShowDone] = useState(true);
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState('');
-  const [addStep, setAddStep] = useState('idle');
-  const [pendingItem, setPendingItem] = useState('');
-  const [pendingStore, setPendingStore] = useState('');
-  const [pendingPerson, setPendingPerson] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [showFullDatabaseList, setShowFullDatabaseList] = useState(false);
   const [selectedDatabaseItemId, setSelectedDatabaseItemId] = useState(null);
@@ -23,6 +23,7 @@ export default function App() {
 
   useEffect(() => {
     loadItems();
+    loadStores();
   }, []);
 
   useEffect(() => {
@@ -40,6 +41,22 @@ export default function App() {
       setLoading(false);
     }
   }
+
+  async function loadStores() {
+    try {
+      const data = await fetchStores();
+      const nextStores = data.map((store) => store.name).filter(Boolean);
+      setStores(nextStores);
+      if (selectedStore !== 'All' && !nextStores.includes(selectedStore)) {
+        setSelectedStore('All');
+      }
+    } catch (error) {
+      console.error('Failed to load stores:', error);
+      setStores([]);
+    }
+  }
+
+  const filterOptions = useMemo(() => ['All', ...stores], [stores]);
 
   const visibleItems = useMemo(() => {
     return items.filter((item) => selectedStore === 'All' || item.store === selectedStore);
@@ -72,32 +89,33 @@ export default function App() {
 
   async function addItem(event) {
     event.preventDefault();
-    const name = itemName.trim();
+    const name = draft.name.trim();
     if (!name) return;
 
-    const initialStore = selectedStore !== 'All' ? selectedStore : '';
-    setPendingItem(name);
-    setPendingStore(initialStore);
-    setPendingPerson('');
-    setAddStep('store');
-    setItemName('');
-  }
+    const qty = Number(draft.qty) > 0 ? Number(draft.qty) : 1;
+    const store = (draft.store || (selectedStore !== 'All' ? selectedStore : '') || 'Unspecified').trim();
+    const addedBy = draft.addedBy.trim() || 'You';
 
-  async function submitAddedItem() {
     try {
       const newItem = await createItem({
-        name: pendingItem,
-        qty: 1,
-        store: pendingStore || 'Unspecified',
-        addedBy: pendingPerson || 'You',
+        name,
+        qty,
+        store,
+        addedBy,
         done: false,
       });
 
       setItems((current) => [newItem, ...current]);
-      setPendingItem('');
-      setPendingStore('');
-      setPendingPerson('');
-      setAddStep('idle');
+      setDraft({
+        name: '',
+        qty: 1,
+        store: selectedStore !== 'All' ? selectedStore : '',
+        addedBy: '',
+      });
+
+      if (store && !stores.includes(store)) {
+        setStores((current) => [...current, store]);
+      }
     } catch (error) {
       console.error('Failed to add item:', error);
     }
@@ -136,7 +154,7 @@ export default function App() {
         .trim();
 
       if (transcript) {
-        setItemName(transcript);
+        setDraft((current) => ({ ...current, name: transcript }));
       }
     };
     recognition.onerror = () => setIsListening(false);
@@ -303,8 +321,8 @@ export default function App() {
               <div className="composer-field">
                 <input
                   type="text"
-                  value={itemName}
-                  onChange={(event) => setItemName(event.target.value)}
+                  value={draft.name}
+                  onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
                   placeholder="Add an item…"
                   aria-label="Add an item"
                 />
@@ -319,53 +337,53 @@ export default function App() {
               </div>
               <button type="submit" className="add-btn">Add</button>
             </div>
-          </form>
 
-          {addStep !== 'idle' && (
-            <div className="add-flow">
-              {addStep === 'store' && (
-                <>
-                  <label className="flow-label">Where is it for?</label>
-                  <div className="flow-row">
-                    <input
-                      type="text"
-                      value={pendingStore}
-                      onChange={(event) => setPendingStore(event.target.value)}
-                      placeholder="Store name"
-                    />
-                    <button
-                      type="button"
-                      className="next-btn"
-                      onClick={() => setAddStep('person')}
-                    >
-                      Next
-                    </button>
-                  </div>
-                </>
-              )}
+            <div className="composer-row composer-meta">
+              <label className="mini-field">
+                <span>Qty</span>
+                <input
+                  type="number"
+                  min="1"
+                  value={draft.qty}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      qty: Number(event.target.value) || 1,
+                    }))
+                  }
+                />
+              </label>
 
-              {addStep === 'person' && (
-                <>
-                  <label className="flow-label">Who is adding it?</label>
-                  <div className="flow-row">
-                    <input
-                      type="text"
-                      value={pendingPerson}
-                      onChange={(event) => setPendingPerson(event.target.value)}
-                      placeholder="Person name"
-                    />
-                    <button
-                      type="button"
-                      className="next-btn primary"
-                      onClick={submitAddedItem}
-                    >
-                      Add item
-                    </button>
-                  </div>
-                </>
-              )}
+              <label className="mini-field">
+                <span>Store</span>
+                <input
+                  list="store-list"
+                  value={draft.store || (selectedStore !== 'All' ? selectedStore : '')}
+                  onChange={(event) =>
+                    setDraft((current) => ({ ...current, store: event.target.value }))
+                  }
+                  placeholder="Store"
+                />
+                <datalist id="store-list">
+                  {stores.map((store) => (
+                    <option key={store} value={store} />
+                  ))}
+                </datalist>
+              </label>
+
+              <label className="mini-field">
+                <span>Person</span>
+                <input
+                  type="text"
+                  value={draft.addedBy}
+                  onChange={(event) =>
+                    setDraft((current) => ({ ...current, addedBy: event.target.value }))
+                  }
+                  placeholder="You"
+                />
+              </label>
             </div>
-          )}
+          </form>
 
           <section className="list-frame">
             <div className="list-toolbar">
@@ -405,7 +423,7 @@ export default function App() {
         <section className="panel store-panel">
           <h2>Stores</h2>
           <div className="chip-group">
-            {storeOptions.map((option) => (
+            {filterOptions.map((option) => (
               <button
                 key={option}
                 type="button"

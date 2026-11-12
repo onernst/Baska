@@ -279,7 +279,8 @@ body[data-theme='dark'] .stats-grid div {
 
 .summary-panel {
   margin-bottom: 14px;
-  padding: 12px 12px 10px;
+  padding: 6px 10px;
+  max-width: 100%;
 }
 
 .store-panel {
@@ -287,26 +288,28 @@ body[data-theme='dark'] .stats-grid div {
 }
 
 .panel h2 {
-  margin: 0 0 8px;
-  font-size: 0.94rem;
+  margin: 0 0 6px;
+  font-size: 0.8rem;
   font-weight: 700;
 }
 
 .stats-split {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .stats-block {
   border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 8px 10px 7px;
+  border-radius: 8px;
+  padding: 4px 10px;
   background: rgba(255, 255, 255, 0.75);
-  min-height: 56px;
-  display: flex;
-  flex-direction: column;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  gap: 6px;
+  flex: 1;
 }
 
 .stats-block.green {
@@ -320,15 +323,16 @@ body[data-theme='dark'] .stats-grid div {
 }
 
 .stats-block label {
-  display: block;
+  display: inline-block;
   color: var(--muted);
-  font-size: 0.62rem;
-  margin-bottom: 2px;
+  font-size: 0.52rem;
+  margin: 0;
+  line-height: 1;
 }
 
 .stats-block strong {
-  font-size: 1.1rem;
-  line-height: 1.1;
+  font-size: 0.8rem;
+  line-height: 1;
 }
 
 .chip-group {
@@ -529,6 +533,32 @@ body[data-theme='dark'] .stats-grid div {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.composer-meta {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mini-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.mini-field input {
+  width: 100%;
+  min-height: 36px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+  color: var(--text);
 }
 
 .composer-field {
@@ -801,6 +831,10 @@ body[data-theme='dark'] .stats-grid div {
 
   .composer-row {
     flex-direction: column;
+  }
+
+  .composer-meta {
+    grid-template-columns: 1fr;
   }
 
   .add-btn {
