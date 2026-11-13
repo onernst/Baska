@@ -127,6 +127,22 @@ body[data-theme='dark'] .stats-grid div {
   padding: 6px 8px;
 }
 
+.logout-btn {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.logout-btn:hover {
+  background: rgba(214, 69, 69, 0.1);
+  color: var(--danger);
+  border-color: rgba(214, 69, 69, 0.3);
+}
+
 .icon-pill,
 .theme-toggle,
 .status-pill {
@@ -1053,6 +1069,22 @@ body[data-theme='dark'] .stats-grid div {
 .auth-form button[type="submit"]:disabled {
   background: var(--muted);
   cursor: not-allowed;
+}
+
+.auth-form .guest-button {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.65);
+  color: var(--text);
+  font-weight: 600;
+  padding: 12px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.auth-form .guest-button:hover {
+  border-color: #b7c9c0;
+  transform: translateY(-1px);
 }
 
 .auth-error {

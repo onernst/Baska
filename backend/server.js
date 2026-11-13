@@ -11,11 +11,40 @@ const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
+// For testing: use default JWT_SECRET if not set
+const JWT_SECRET = process.env.JWT_SECRET || 'testing-secret-key-change-in-production';
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  console.warn('WARNING: JWT_SECRET not set. Using default for testing. Set JWT_SECRET in production!');
+}
 
 // Middleware
-app.use(cors());
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',') 
+  : ['http://localhost:5173', 'http://127.0.0.1:5173'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow all origins for testing, restrict in production
+    if (process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+}));
 app.use(express.json());
+
+// Request logging middleware
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
+    next();
+  });
+}
 
 // Database setup
 const dbPath = join(__dirname, 'baska.db');
@@ -167,7 +196,7 @@ app.get('/api/items', authenticateToken, (req, res) => {
 // Get single item
 app.get('/api/items/:id', authenticateToken, (req, res) => {
   try {
-    const item = db.prepare('SELECT * FROM items WHERE id = ?').get(req.params.id);
+    const item = db.prepare('SELECT * FROM items WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
     if (!item) {
       return res.status(404).json({ error: 'Item not found' });
     }
@@ -258,7 +287,7 @@ app.patch('/api/items/:id/toggle', authenticateToken, (req, res) => {
 });
 
 // Get all stores
-app.get('/api/stores', (req, res) => {
+app.get('/api/stores', authenticateToken, (req, res) => {
   try {
     const stores = db.prepare('SELECT * FROM stores ORDER BY name').all();
     res.json(stores);
@@ -268,7 +297,7 @@ app.get('/api/stores', (req, res) => {
 });
 
 // Create store
-app.post('/api/stores', (req, res) => {
+app.post('/api/stores', authenticateToken, (req, res) => {
   try {
     const { name } = req.body;
     
@@ -291,7 +320,7 @@ app.post('/api/stores', (req, res) => {
 });
 
 // Delete store
-app.delete('/api/stores/:id', (req, res) => {
+app.delete('/api/stores/:id', authenticateToken, (req, res) => {
   try {
     const stmt = db.prepare('DELETE FROM stores WHERE id = ?');
     const result = stmt.run(req.params.id);
@@ -309,6 +338,26 @@ app.delete('/api/stores/:id', (req, res) => {
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({ error: 'CORS policy violation' });
+  }
+  
+  res.status(err.status || 500).json({
+    error: process.env.NODE_ENV === 'production' 
+      ? 'Internal server error' 
+      : err.message
+  });
 });
 
 // Start server

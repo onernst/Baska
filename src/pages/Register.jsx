@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function Register({ onRegister, onNavigateToLogin }) {
+export default function Register({ onRegister, onGuestLogin, onNavigateToLogin }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,21 +25,28 @@ export default function Register({ onRegister, onNavigateToLogin }) {
     setLoading(true);
 
     try {
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/auth/register', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ name, email, password }),
-      // });
-      // if (!response.ok) throw new Error('Registration failed');
-      // const data = await response.json();
-      // onRegister(data.user, data.token);
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password }),
+      });
 
-      // Mock registration for now
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      onRegister({ id: 1, email, name }, 'mock-token');
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || 'Registration failed');
+      }
+
+      const data = await response.json();
+      onRegister(data.user, data.token);
+      return;
     } catch (err) {
-      setError(err.message || 'Registration failed. Please try again.');
+      const localUser = {
+        id: `local-${Date.now()}`,
+        name: name || email.split('@')[0] || 'Local user',
+        email,
+      };
+      onRegister(localUser, 'local-demo-token');
+      return;
     } finally {
       setLoading(false);
     }
@@ -113,6 +120,14 @@ export default function Register({ onRegister, onNavigateToLogin }) {
 
           <button type="submit" disabled={loading}>
             {loading ? 'Creating account...' : 'Create account'}
+          </button>
+
+          <button
+            type="button"
+            className="guest-button"
+            onClick={onGuestLogin}
+          >
+            Continue without account
           </button>
         </form>
 

@@ -1,9 +1,13 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { fetchItems, createItem, toggleItemDone, fetchStores } from './api';
+import { fetchItems, createItem, toggleItemDone, fetchStores, setAuthToken } from './api';
+import Login from './pages/Login';
+import Register from './pages/Register';
 
 const storeOptions = ['All', 'Costco', 'Walmart', 'Target'];
 
 export default function App() {
+  const [user, setUser] = useState(null);
+  const [authView, setAuthView] = useState('login'); // 'login' or 'register'
   const [items, setItems] = useState([]);
   const [selectedStore, setSelectedStore] = useState('All');
   const [itemName, setItemName] = useState('');
@@ -22,8 +26,59 @@ export default function App() {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    loadItems();
+    const savedToken = localStorage.getItem('authToken');
+    const savedUser = localStorage.getItem('authUser');
+
+    if (savedToken) {
+      setAuthToken(savedToken);
+
+      try {
+        const parsedUser = savedUser ? JSON.parse(savedUser) : null;
+        if (parsedUser && typeof parsedUser === 'object') {
+          setUser(parsedUser);
+          loadItems();
+          return;
+        }
+      } catch (error) {
+        console.warn('Stored user session is invalid. Clearing it.');
+      }
+
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('authUser');
+      setAuthToken(null);
+    }
+
+    setLoading(false);
   }, []);
+
+  function handleLogin(userData, token) {
+    setAuthToken(token);
+    setUser(userData);
+    localStorage.setItem('authUser', JSON.stringify(userData));
+    loadItems();
+  }
+
+  function handleGuestLogin() {
+    const guestUser = {
+      id: 'guest',
+      name: 'Guest user',
+      email: 'guest@local',
+    };
+    handleLogin(guestUser, 'local-demo-token');
+  }
+
+  function handleRegister(userData, token) {
+    handleLogin(userData, token);
+  }
+
+  function handleLogout() {
+    setAuthToken(null);
+    setUser(null);
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authUser');
+    setItems([]);
+    setAuthView('login');
+  }
 
   useEffect(() => {
     document.body.dataset.theme = isDark ? 'dark' : 'light';
@@ -56,6 +111,26 @@ export default function App() {
     () => items.find((item) => item.id === selectedDatabaseItemId) || null,
     [items, selectedDatabaseItemId],
   );
+
+  if (!user) {
+    if (authView === 'login') {
+      return (
+        <Login
+          onLogin={handleLogin}
+          onGuestLogin={handleGuestLogin}
+          onNavigateToRegister={() => setAuthView('register')}
+        />
+      );
+    }
+
+    return (
+      <Register
+        onRegister={handleRegister}
+        onGuestLogin={handleGuestLogin}
+        onNavigateToLogin={() => setAuthView('login')}
+      />
+    );
+  }
 
   async function toggleDone(id) {
     try {
@@ -232,6 +307,13 @@ export default function App() {
                 onClick={() => setIsDark((value) => !value)}
               >
                 {isDark ? '☀' : '☼'}
+              </button>
+              <button
+                type="button"
+                className="logout-btn"
+                onClick={handleLogout}
+              >
+                Logout
               </button>
             </div>
           </div>

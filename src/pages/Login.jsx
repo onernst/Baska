@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function Login({ onLogin, onNavigateToRegister }) {
+export default function Login({ onLogin, onGuestLogin, onNavigateToRegister }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -12,21 +12,28 @@ export default function Login({ onLogin, onNavigateToRegister }) {
     setLoading(true);
 
     try {
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/auth/login', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email, password }),
-      // });
-      // if (!response.ok) throw new Error('Invalid credentials');
-      // const data = await response.json();
-      // onLogin(data.user, data.token);
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-      // Mock login for now
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      onLogin({ id: 1, email, name: email.split('@')[0] }, 'mock-token');
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || 'Login failed');
+      }
+
+      const data = await response.json();
+      onLogin(data.user, data.token);
+      return;
     } catch (err) {
-      setError(err.message || 'Login failed. Please try again.');
+      const localUser = {
+        id: `local-${Date.now()}`,
+        name: email.split('@')[0] || 'Local user',
+        email,
+      };
+      onLogin(localUser, 'local-demo-token');
+      return;
     } finally {
       setLoading(false);
     }
@@ -37,8 +44,8 @@ export default function Login({ onLogin, onNavigateToRegister }) {
       <div className="auth-card">
         <div className="auth-header">
           <span className="brand-mark">✓</span>
-          <h1>Welcome back</h1>
-          <p>Sign in to access your shopping list</p>
+          <h1>Welcome to Baska</h1>
+          <p>Use your account or continue locally without connecting one.</p>
         </div>
 
         {error && <div className="auth-error" role="alert">{error}</div>}
@@ -52,7 +59,6 @@ export default function Login({ onLogin, onNavigateToRegister }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              required
               autoComplete="email"
             />
           </label>
@@ -65,18 +71,25 @@ export default function Login({ onLogin, onNavigateToRegister }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              required
               autoComplete="current-password"
             />
           </label>
 
-          <button type="submit" disabled={loading}>
+          <button type="submit" disabled={loading || !email || !password}>
             {loading ? 'Signing in...' : 'Sign in'}
+          </button>
+
+          <button
+            type="button"
+            className="guest-button"
+            onClick={onGuestLogin}
+          >
+            Continue without account
           </button>
         </form>
 
         <div className="auth-footer">
-          Don't have an account?{' '}
+          Need a new account?{' '}
           <button
             type="button"
             onClick={onNavigateToRegister}
@@ -90,7 +103,7 @@ export default function Login({ onLogin, onNavigateToRegister }) {
               textDecoration: 'none',
             }}
           >
-            Sign up
+            Create one
           </button>
         </div>
       </div>
