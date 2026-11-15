@@ -281,10 +281,20 @@ function ListApp({ user }) {
     startAddFlow(name);
   }
 
+  // Who an item is for. If nobody was picked, it belongs to its direct sender:
+  // the last person who sent or changed it, not the original creator.
+  function personOf(item) {
+    return (
+      (item.assigned_to || '').trim() ||
+      (item.updated_by_name || '').trim() ||
+      (item.added_by_name || '').trim()
+    );
+  }
+
   function missingFor(item) {
     const missing = [];
     if (!(item.store || '').trim()) missing.push('store');
-    if (!(item.assigned_to || '').trim()) missing.push('person');
+    if (!personOf(item)) missing.push('person');
     return missing;
   }
 
@@ -292,7 +302,9 @@ function ListApp({ user }) {
     if (!assignEditor) return;
     const { id, store, person, listId } = assignEditor;
     try {
-      const updated = await assignItem(id, { store, assignedTo: person, listId });
+      // Left empty: the person sending it now (you) takes ownership.
+      const assignedTo = person.trim() || myName;
+      const updated = await assignItem(id, { store, assignedTo, listId });
       if (listId !== currentListId) {
         setItems((current) => current.filter((i) => i.id !== id));
         const target = lists.find((l) => l.id === listId);
@@ -317,7 +329,7 @@ function ListApp({ user }) {
       const created = await createItem(targetListId, {
         name: pendingItem,
         store: pendingStore.trim(),
-        assignedTo: pendingPerson.trim(),
+        assignedTo: pendingPerson.trim() || myName,
       });
       if (targetListId === currentListId) {
         setItems((current) => [created, ...current.filter((i) => i.id !== created.id)]);
@@ -818,7 +830,7 @@ function ListApp({ user }) {
                           {[
                             item.qty > 1 ? `×${item.qty}` : '',
                             item.store,
-                            item.assigned_to && `for ${item.assigned_to}`,
+                            personOf(item) && `for ${personOf(item)}`,
                             item.added_by_name && `added by ${item.added_by_name}`,
                           ]
                             .filter(Boolean)
@@ -944,7 +956,7 @@ function ListApp({ user }) {
                               : setAssignEditor({
                                   id: item.id,
                                   store: item.store || '',
-                                  person: item.assigned_to || '',
+                                  person: personOf(item) || myName,
                                   listId: item.list_id || currentListId,
                                 })
                           }

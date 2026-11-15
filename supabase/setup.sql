@@ -87,10 +87,18 @@ begin
     new.added_by := auth.uid();
     new.added_by_name := who;
     new.updated_by_name := who;
+    -- No person picked: the sender owns it
+    if coalesce(trim(new.assigned_to), '') = '' then
+      new.assigned_to := who;
+    end if;
   else
     new.added_by := old.added_by;
     new.added_by_name := old.added_by_name;
     new.updated_by_name := who;
+    -- Left empty: the direct sender (whoever is making this change) takes ownership
+    if coalesce(trim(new.assigned_to), '') = '' then
+      new.assigned_to := who;
+    end if;
   end if;
   new.updated_at := now();
   return new;
