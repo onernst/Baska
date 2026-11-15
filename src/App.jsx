@@ -414,20 +414,19 @@ function ListApp({ user }) {
             </button>
             {(() => {
               const percent = stats.total ? Math.round((stats.done / stats.total) * 100) : 0;
+              const firstThree = [
+                { key: 'complete', label: 'Complete', nums: [percent], percent: true, tone: 'progress' },
+                { key: 'lists', label: lists.length === 1 ? 'List' : 'Lists', nums: [lists.length], tone: 'orange' },
+                { key: 'doneof', label: 'Done', nums: [stats.done, stats.total], tone: 'green' },
+              ];
               const cards = summaryOpen
                 ? [
-                    { key: 'complete', label: 'Complete', nums: [percent], percent: true, tone: 'progress' },
-                    { key: 'lists', label: lists.length === 1 ? 'List' : 'Lists', nums: [lists.length], tone: 'orange' },
+                    ...firstThree,
                     { key: 'onlist', label: 'On list', nums: [stats.total], tone: 'red' },
-                    { key: 'done', label: 'Done', nums: [stats.done], tone: 'green' },
                     { key: 'tobuy', label: 'To buy', nums: [stats.pending], tone: 'orange' },
                     { key: 'people', label: members.length === 1 ? 'Person' : 'People', nums: [members.length], tone: 'green' },
                   ]
-                : [
-                    { key: 'complete', label: 'Complete', nums: [percent], percent: true, tone: 'progress' },
-                    { key: 'lists', label: lists.length === 1 ? 'List' : 'Lists', nums: [lists.length], tone: 'orange' },
-                    { key: 'doneof', label: 'Done', nums: [stats.done, stats.total], tone: 'green' },
-                  ];
+                : firstThree;
               return (
                 <div
                   className="stats"
