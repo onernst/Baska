@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Auth from './pages/Auth';
+import Assistant from './components/Assistant';
+import Recipes from './components/Recipes';
 import {
   assignItem,
   createItem,
@@ -20,6 +22,7 @@ import {
   signOut,
   subscribeToList,
 } from './api';
+import { searchRecipes } from './recipes';
 
 const DEFAULT_STORES = ['Costco', 'Walmart', 'Target'];
 const JOIN_KEY = 'baska.pendingJoin';
@@ -83,6 +86,7 @@ function ListApp({ user }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [listsOpen, setListsOpen] = useState(false);
+  const [recipesOpen, setRecipesOpen] = useState(false);
   const [editingList, setEditingList] = useState(null); // { id, name }
   const [confirmingDelete, setConfirmingDelete] = useState(null); // list id
   const [isDark, setIsDark] = useState(false);
@@ -103,6 +107,10 @@ function ListApp({ user }) {
   const itemsRef = useRef(items);
   itemsRef.current = items;
   const myNameRef = useRef(myName);
+  const listsRef = useRef(lists);
+  listsRef.current = lists;
+  const currentListIdRef = useRef(currentListId);
+  currentListIdRef.current = currentListId;
   myNameRef.current = myName;
 
   const currentList = lists.find((list) => list.id === currentListId) || null;
@@ -411,6 +419,138 @@ function ListApp({ user }) {
     }
   }
 
+  async function addRecipeIngredients(ingredients, listId, recipeName) {
+    let added = 0;
+    for (const ing of ingredients) {
+      const name = ing.measure ? `${ing.name} (${ing.measure})` : ing.name;
+      try {
+        const created = await createItem(listId, { name, assignedTo: myName, note: recipeName });
+        added += 1;
+        if (listId === currentListIdRef.current) {
+          setItems((current) => [created, ...current.filter((i) => i.id !== created.id)]);
+        }
+      } catch (err) {
+        showToast(`Couldn’t add ${ing.name}: ${err.message}`);
+      }
+    }
+    const target = lists.find((l) => l.id === listId);
+    showToast(`Added ${added} ingredient${added === 1 ? '' : 's'} for ${recipeName} to ${target ? target.name : 'your list'}`);
+  }
+
+  // ---- Assistant: what it can see, and the commands it can run ----
+  function assistantContext() {
+    return {
+      me: myName,
+      open_list: listsRef.current.find((l) => l.id === currentListIdRef.current)?.name || '',
+      lists: listsRef.current.map((l) => l.name),
+      people: Array.from(new Set([myName, ...members.map((m) => m.display_name)].filter(Boolean))),
+      stores: storeOptions.filter((st) => st !== 'All'),
+      store_filter: selectedStore,
+      items: itemsRef.current.slice(0, 200).map((i) => ({
+        name: i.name,
+        qty: i.qty,
+        store: i.store || '',
+        person: personOf(i),
+        status: i.status,
+        note: i.status_note || '',
+      })),
+    };
+  }
+
+  function findByName(collection, name, key = 'name') {
+    const wanted = (name || '').trim().toLowerCase();
+    if (!wanted) return null;
+    return (
+      collection.find((x) => (x[key] || '').toLowerCase() === wanted) ||
+      collection.find((x) => (x[key] || '').toLowerCase().includes(wanted)) ||
+      null
+    );
+  }
+
+  async function runAssistantTool(name, input) {
+    const allLists = listsRef.current;
+    const openId = currentListIdRef.current;
+    switch (name) {
+      case 'add_items': {
+        const done = [];
+        for (const it of input.items || []) {
+          const target = it.list ? findByName(allLists, it.list) : null;
+          if (it.list && !target) {
+            done.push(`no list called “${it.list}”`);
+            continue;
+          }
+          const listId = target ? target.id : openId;
+          const created = await createItem(listId, {
+            name: it.name,
+            qty: it.qty || 1,
+            store: it.store || '',
+            assignedTo: it.person || myName,
+          });
+          if (listId === openId) setItems((current) => [created, ...current.filter((i) => i.id !== created.id)]);
+          done.push(`${it.name}${target ? ` → ${target.name}` : ''}`);
+        }
+        return `Added: ${done.join(', ')}`;
+      }
+      case 'update_item': {
+        const item = findByName(itemsRef.current, input.item);
+        if (!item) return `No item called “${input.item}” on the open list.`;
+        if (input.status) await setItemStatus(item.id, input.status, input.note || '');
+        if (input.store !== undefined || input.person !== undefined || input.list) {
+          const target = input.list ? findByName(allLists, input.list) : null;
+          if (input.list && !target) return `No list called “${input.list}”.`;
+          await assignItem(item.id, {
+            store: input.store !== undefined ? input.store : item.store || '',
+            assignedTo: (input.person !== undefined ? input.person : personOf(item)) || myName,
+            listId: target ? target.id : item.list_id || openId,
+          });
+        }
+        await refreshItems();
+        return `Updated ${item.name}`;
+      }
+      case 'remove_item': {
+        const item = findByName(itemsRef.current, input.item);
+        if (!item) return `No item called “${input.item}” on the open list.`;
+        await deleteItem(item.id);
+        setItems((current) => current.filter((i) => i.id !== item.id));
+        return `Removed ${item.name}`;
+      }
+      case 'open_list': {
+        const target = findByName(allLists, input.list);
+        if (!target) return `No list called “${input.list}”.`;
+        setCurrentListId(target.id);
+        return `Opened ${target.name}`;
+      }
+      case 'create_list': {
+        const created = await createList(input.name);
+        setLists(await fetchLists());
+        setCurrentListId(created.id);
+        return `Created and opened ${created.name}`;
+      }
+      case 'filter_store': {
+        const wanted = (input.store || '').trim();
+        if (!wanted || wanted.toLowerCase() === 'all') {
+          setSelectedStore('All');
+          return 'Showing all stores';
+        }
+        const match = storeOptions.find((st) => st.toLowerCase() === wanted.toLowerCase()) || wanted;
+        setSelectedStore(match);
+        return `Showing ${match}`;
+      }
+      case 'find_recipes': {
+        const found = (await searchRecipes(input.query)).slice(0, 4);
+        if (!found.length) return `No recipes found for “${input.query}”.`;
+        return JSON.stringify(
+          found.map((r) => ({
+            name: r.name,
+            ingredients: r.ingredients.map((i) => (i.measure ? `${i.name} (${i.measure})` : i.name)),
+          })),
+        );
+      }
+      default:
+        return `Unknown command ${name}`;
+    }
+  }
+
   function closeListManager() {
     setListsOpen(false);
     setEditingList(null);
@@ -627,6 +767,125 @@ function ListApp({ user }) {
               </button>
             </div>
           </div>
+
+          {listsOpen && (
+              <section className="list-sheet inline" id="list-manager" aria-label="Manage lists">
+                <div className="list-sheet-head">
+                  <h2>My lists</h2>
+                  <button type="button" className="ghost-btn small" onClick={handleNewList}>
+                    + New list
+                  </button>
+                  <button type="button" className="sheet-close" aria-label="Close" onClick={closeListManager}>
+                    ×
+                  </button>
+                </div>
+
+                <ul className="manage-list">
+                  {lists.map((list) => {
+                    const isOwner = list.owner_id === user.id;
+                    const isCurrent = list.id === currentListId;
+                    const isEditing = editingList?.id === list.id;
+                    const isConfirming = confirmingDelete === list.id;
+                    return (
+                      <li key={list.id} className={isCurrent ? 'manage-row current' : 'manage-row'}>
+                        {isEditing ? (
+                          <form
+                            className="manage-edit"
+                            onSubmit={(event) => {
+                              event.preventDefault();
+                              saveListName();
+                            }}
+                          >
+                            <input
+                              type="text"
+                              value={editingList.name}
+                              onChange={(event) => setEditingList({ ...editingList, name: event.target.value })}
+                              aria-label="List name"
+                              autoFocus
+                            />
+                            <button type="submit" className="mini-btn save">
+                              Save
+                            </button>
+                            <button type="button" className="mini-btn" onClick={() => setEditingList(null)}>
+                              Cancel
+                            </button>
+                          </form>
+                        ) : isConfirming ? (
+                          <div className="manage-confirm">
+                            <span>
+                              {isOwner
+                                ? `Delete “${list.name}” and all its items for everyone?`
+                                : `Leave “${list.name}”? You’ll need a new invite to rejoin.`}
+                            </span>
+                            <div className="manage-actions">
+                              <button type="button" className="mini-btn danger" onClick={() => removeList(list)}>
+                                {isOwner ? 'Delete' : 'Leave'}
+                              </button>
+                              <button type="button" className="mini-btn" onClick={() => setConfirmingDelete(null)}>
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className="manage-name"
+                              onClick={() => {
+                                setCurrentListId(list.id);
+                                closeListManager();
+                              }}
+                            >
+                              <strong>{list.name}</strong>
+                              <small>
+                                {isCurrent ? 'Open now' : 'Tap to open'}
+                                {isOwner ? '' : ' · shared with you'}
+                              </small>
+                            </button>
+                            <div className="manage-actions">
+                              {isOwner && (
+                                <button
+                                  type="button"
+                                  className="mini-btn"
+                                  onClick={() => {
+                                    setConfirmingDelete(null);
+                                    setEditingList({ id: list.id, name: list.name });
+                                  }}
+                                >
+                                  Edit
+                                </button>
+                              )}
+                              <button type="button" className="mini-btn" onClick={() => handleShare(list)}>
+                                Share
+                              </button>
+                              <button
+                                type="button"
+                                className="mini-btn danger"
+                                onClick={() => {
+                                  setEditingList(null);
+                                  setConfirmingDelete(list.id);
+                                }}
+                              >
+                                {isOwner ? 'Delete' : 'Leave'}
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+          )}
+
+          {recipesOpen && (
+            <Recipes
+              lists={lists}
+              currentListId={currentListId}
+              onAdd={addRecipeIngredients}
+              onClose={() => setRecipesOpen(false)}
+            />
+          )}
 
           {error && (
             <div className="auth-error" role="alert">
@@ -1023,135 +1282,42 @@ function ListApp({ user }) {
           type="button"
           className={listsOpen ? 'bottom-tab active' : 'bottom-tab'}
           aria-expanded={listsOpen}
-          onClick={() => (listsOpen ? closeListManager() : setListsOpen(true))}
+          onClick={() => {
+            if (listsOpen) {
+              closeListManager();
+              return;
+            }
+            setListsOpen(true);
+            setRecipesOpen(false);
+            requestAnimationFrame(() =>
+              document.getElementById('list-manager')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+            );
+          }}
         >
           <span>Lists</span>
         </button>
-        <button type="button" className="bottom-tab" onClick={() => handleShare()}>
-          <span>Share</span>
-        </button>
-        <button type="button" className="bottom-tab" onClick={handleNewList}>
-          <span>New list</span>
+        <button
+          type="button"
+          className={recipesOpen ? 'bottom-tab active' : 'bottom-tab'}
+          aria-expanded={recipesOpen}
+          onClick={() => {
+            if (recipesOpen) {
+              setRecipesOpen(false);
+              return;
+            }
+            closeListManager();
+            setRecipesOpen(true);
+            requestAnimationFrame(() =>
+              document.getElementById('recipes-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+            );
+          }}
+        >
+          <span>Recipes</span>
         </button>
       </nav>
 
-      {listsOpen && (
-        <div className="sheet-backdrop" onClick={closeListManager}>
-          <div
-            className="list-sheet"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Manage lists"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="list-sheet-head">
-              <h2>My lists</h2>
-              <button type="button" className="ghost-btn small" onClick={handleNewList}>
-                + New list
-              </button>
-              <button type="button" className="sheet-close" aria-label="Close" onClick={closeListManager}>
-                ×
-              </button>
-            </div>
 
-            <ul className="manage-list">
-              {lists.map((list) => {
-                const isOwner = list.owner_id === user.id;
-                const isCurrent = list.id === currentListId;
-                const isEditing = editingList?.id === list.id;
-                const isConfirming = confirmingDelete === list.id;
-                return (
-                  <li key={list.id} className={isCurrent ? 'manage-row current' : 'manage-row'}>
-                    {isEditing ? (
-                      <form
-                        className="manage-edit"
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          saveListName();
-                        }}
-                      >
-                        <input
-                          type="text"
-                          value={editingList.name}
-                          onChange={(event) => setEditingList({ ...editingList, name: event.target.value })}
-                          aria-label="List name"
-                          autoFocus
-                        />
-                        <button type="submit" className="mini-btn save">
-                          Save
-                        </button>
-                        <button type="button" className="mini-btn" onClick={() => setEditingList(null)}>
-                          Cancel
-                        </button>
-                      </form>
-                    ) : isConfirming ? (
-                      <div className="manage-confirm">
-                        <span>
-                          {isOwner
-                            ? `Delete “${list.name}” and all its items for everyone?`
-                            : `Leave “${list.name}”? You’ll need a new invite to rejoin.`}
-                        </span>
-                        <div className="manage-actions">
-                          <button type="button" className="mini-btn danger" onClick={() => removeList(list)}>
-                            {isOwner ? 'Delete' : 'Leave'}
-                          </button>
-                          <button type="button" className="mini-btn" onClick={() => setConfirmingDelete(null)}>
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          className="manage-name"
-                          onClick={() => {
-                            setCurrentListId(list.id);
-                            closeListManager();
-                          }}
-                        >
-                          <strong>{list.name}</strong>
-                          <small>
-                            {isCurrent ? 'Open now' : 'Tap to open'}
-                            {isOwner ? '' : ' · shared with you'}
-                          </small>
-                        </button>
-                        <div className="manage-actions">
-                          {isOwner && (
-                            <button
-                              type="button"
-                              className="mini-btn"
-                              onClick={() => {
-                                setConfirmingDelete(null);
-                                setEditingList({ id: list.id, name: list.name });
-                              }}
-                            >
-                              Edit
-                            </button>
-                          )}
-                          <button type="button" className="mini-btn" onClick={() => handleShare(list)}>
-                            Share
-                          </button>
-                          <button
-                            type="button"
-                            className="mini-btn danger"
-                            onClick={() => {
-                              setEditingList(null);
-                              setConfirmingDelete(list.id);
-                            }}
-                          >
-                            {isOwner ? 'Delete' : 'Leave'}
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        </div>
-      )}
+      <Assistant getContext={assistantContext} runTool={runAssistantTool} />
 
       {toast && (
         <div className="toast" role="status" aria-live="polite">

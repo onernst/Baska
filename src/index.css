@@ -1788,3 +1788,266 @@ body[data-theme='dark'] .status-badge.substituted {
   gap: 6px;
   margin-top: 4px;
 }
+
+/* List manager shown inside the page instead of a pop-up */
+.list-sheet.inline {
+  width: 100%;
+  max-height: none;
+  overflow: visible;
+  margin: 0 0 12px;
+  box-shadow: var(--shadow);
+  scroll-margin-top: 80px;
+}
+
+@media (max-width: 480px) {
+  .list-sheet.inline {
+    width: 100%;
+    margin: 0 0 12px;
+  }
+}
+
+/* ---- Recipes ---- */
+.recipe-search {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.recipe-search input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.recipe-note {
+  margin: 6px 2px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.recipe-note.error {
+  color: #e74c3c;
+}
+
+.recipe-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.recipe-card {
+  width: 100%;
+  display: grid;
+  gap: 4px;
+  padding: 0 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.recipe-card img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  display: block;
+}
+
+.recipe-card strong,
+.recipe-card small {
+  padding: 0 8px;
+}
+
+.recipe-card strong {
+  font-size: 0.85rem;
+  line-height: 1.25;
+}
+
+.recipe-card small {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.recipe-detail {
+  display: grid;
+  gap: 8px;
+}
+
+.recipe-hero {
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.recipe-ingredients-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.recipe-ingredients {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.recipe-ingredients label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.recipe-ingredients small {
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.recipe-steps p {
+  white-space: pre-line;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.recipe-credit {
+  margin: 10px 0 0;
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-align: right;
+}
+
+/* ---- Assistant (+ button and chat) ---- */
+.assistant-fab {
+  position: fixed;
+  right: 18px;
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  width: 56px;
+  height: 56px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(150deg, #27ae60, #1e8449);
+  color: #fff;
+  font-size: 2rem;
+  line-height: 1;
+  box-shadow: 0 12px 26px rgba(39, 174, 96, 0.35);
+  cursor: pointer;
+  z-index: 35;
+  transition: transform 0.2s ease;
+}
+
+.assistant-fab.open {
+  transform: rotate(45deg);
+}
+
+.assistant-panel {
+  position: fixed;
+  right: 12px;
+  bottom: calc(154px + env(safe-area-inset-bottom, 0px));
+  width: min(380px, calc(100% - 24px));
+  height: min(480px, calc(100vh - 240px));
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.25);
+  z-index: 34;
+  overflow: hidden;
+}
+
+.assistant-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.assistant-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bubble {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.bubble.assistant {
+  align-self: flex-start;
+  background: rgba(39, 174, 96, 0.1);
+}
+
+.bubble.user {
+  align-self: flex-end;
+  background: #27ae60;
+  color: #fff;
+}
+
+.bubble.action {
+  align-self: center;
+  max-width: 95%;
+  padding: 3px 10px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  background: transparent;
+  border: 1px dashed var(--line);
+}
+
+.bubble.error {
+  align-self: flex-start;
+  color: #e74c3c;
+  background: rgba(231, 76, 60, 0.08);
+}
+
+.assistant-input {
+  display: flex;
+  gap: 6px;
+  padding: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.assistant-input input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assistant-fab {
+    transition: none;
+  }
+}
