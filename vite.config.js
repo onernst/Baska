@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
+  // GitHub Pages serves the app at /Baska/; Render and other hosts serve it at /.
+  base: process.env.GITHUB_ACTIONS ? '/Baska/' : '/',
   plugins: [react()],
   server: {
     host: '0.0.0.0',

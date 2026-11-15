@@ -408,8 +408,8 @@ kbd {
 .panel { min-width: 0; }
 .panel + .panel { margin-top: 0; }
 .panel-title {
-  margin: 0 0 14px; display: flex; align-items: baseline; gap: 8px;
-  font-family: var(--font-display); font-weight: 560; font-size: 1.55rem; line-height: 1.1;
+  margin: 0 0 8px; display: flex; align-items: baseline; gap: 8px;
+  font-family: var(--font-display); font-weight: 560; font-size: 1.2rem; line-height: 1.1;
   letter-spacing: -.01em; font-variation-settings: 'opsz' 72, 'SOFT' 60;
 }
 .panel-title .count { font-family: var(--font-ui); font-size: .85rem; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
