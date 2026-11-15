@@ -110,6 +110,15 @@ export async function createItem(listId, { name, qty = 1, store = '', note = '',
   return check(result);
 }
 
+export async function assignItem(id, { store, assignedTo, listId }) {
+  const changes = { store: store.trim(), assigned_to: assignedTo.trim(), list_id: listId };
+  const result = await supabase.from('items').update(changes).eq('id', id).select().single();
+  if (result.error && /assigned_to/.test(result.error.message)) {
+    throw new Error('Run supabase/add-assigned-to.sql in Supabase first, so items can store who they’re for.');
+  }
+  return check(result);
+}
+
 export async function setItemStatus(id, status, statusNote = '') {
   return check(
     await supabase

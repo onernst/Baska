@@ -1713,71 +1713,78 @@ body[data-theme='dark'] .status-badge.substituted {
   justify-content: flex-end;
 }
 
-/* ---- Barcode scanner ---- */
-.scan-btn {
-  display: inline-grid;
-  place-items: center;
+/* ---- Assignment check: store, person, list on each item ---- */
+.list-toolbar .check-btn {
+  margin-left: auto;
+  margin-right: 8px;
 }
 
-.scanner-backdrop {
-  align-items: center;
-  justify-content: center;
+.list-toolbar .check-btn.warn {
+  color: #d35400;
+  font-weight: 700;
 }
 
-.scanner-sheet {
-  width: min(calc(100% - 24px), 420px);
-  background: var(--surface);
-  color: var(--text);
+.list-toolbar .check-btn.active {
+  color: #27ae60;
+  font-weight: 700;
+}
+
+.missing-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.missing-tag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #d35400;
+  background: rgba(230, 126, 34, 0.12);
+  border: 1px solid rgba(230, 126, 34, 0.35);
+}
+
+.mini-btn.assign.warn {
+  color: #d35400;
+  border-color: rgba(230, 126, 34, 0.5);
+}
+
+.assign-editor {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 10px;
   border: 1px solid var(--line);
-  border-radius: 18px;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.25);
-  padding: 14px;
+  border-radius: 12px;
+  background: var(--surface);
 }
 
-.scanner-frame {
-  position: relative;
-  overflow: hidden;
-  border-radius: 14px;
-  background: #0f172a;
-  aspect-ratio: 4 / 3;
-}
-
-.scanner-frame video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.scanner-line {
-  position: absolute;
-  left: 10%;
-  right: 10%;
-  top: 50%;
-  height: 2px;
-  background: #e74c3c;
-  box-shadow: 0 0 10px rgba(231, 76, 60, 0.8);
-  animation: scan-sweep 1.8s ease-in-out infinite alternate;
-}
-
-@keyframes scan-sweep {
-  from { top: 25%; }
-  to { top: 75%; }
-}
-
-.scanner-status,
-.scanner-error {
-  margin: 10px 2px 2px;
-  font-size: 0.85rem;
+.assign-editor label,
+.assign-label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
   color: var(--muted);
 }
 
-.scanner-error {
-  color: #e74c3c;
+.assign-editor input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 400;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .scanner-line {
-    animation: none;
-  }
+.assign-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 4px;
 }

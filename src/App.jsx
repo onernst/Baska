@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Auth from './pages/Auth';
-import Scanner from './components/Scanner';
 import {
+  assignItem,
   createItem,
   createList,
   deleteList,
@@ -92,7 +92,8 @@ function ListApp({ user }) {
   const [pendingStore, setPendingStore] = useState('');
   const [pendingPerson, setPendingPerson] = useState('');
   const [pendingListId, setPendingListId] = useState('');
-  const [scanning, setScanning] = useState(false);
+  const [checkMode, setCheckMode] = useState(false);
+  const [assignEditor, setAssignEditor] = useState(null); // { id, store, person, listId }
   const [isListening, setIsListening] = useState(false);
   const [statusEditor, setStatusEditor] = useState(null); // { id, status, note }
   const [toast, setToast] = useState('');
@@ -235,6 +236,12 @@ function ListApp({ user }) {
     return { total, done, pending: total - done };
   }, [visibleItems]);
 
+  const unassignedCount = useMemo(
+    () => visibleItems.filter((item) => item.status === 'needed' && missingFor(item).length > 0).length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [visibleItems],
+  );
+
   async function changeStatus(item, status, note = '') {
     const previous = items;
     setItems((current) =>
@@ -274,20 +281,30 @@ function ListApp({ user }) {
     startAddFlow(name);
   }
 
-  const handleScanResult = useCallback(
-    ({ code, name }) => {
-      setScanning(false);
-      if (name) {
-        startAddFlow(name);
-        showToast(`Scanned: ${name}`);
+  function missingFor(item) {
+    const missing = [];
+    if (!(item.store || '').trim()) missing.push('store');
+    if (!(item.assigned_to || '').trim()) missing.push('person');
+    return missing;
+  }
+
+  async function saveAssignment() {
+    if (!assignEditor) return;
+    const { id, store, person, listId } = assignEditor;
+    try {
+      const updated = await assignItem(id, { store, assignedTo: person, listId });
+      if (listId !== currentListId) {
+        setItems((current) => current.filter((i) => i.id !== id));
+        const target = lists.find((l) => l.id === listId);
+        showToast(`Moved “${updated.name}” to ${target ? target.name : 'another list'}`);
       } else {
-        setItemName(code);
-        showToast('Product not found. Type its name, then tap Add.');
+        setItems((current) => current.map((i) => (i.id === id ? updated : i)));
       }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [myName, currentListId, selectedStore],
-  );
+      setAssignEditor(null);
+    } catch (err) {
+      showToast(`Couldn’t save: ${err.message}`);
+    }
+  }
 
   function cancelAddFlow() {
     setAddStep('idle');
@@ -623,23 +640,6 @@ function ListApp({ user }) {
                 >
                   {isListening ? '◉' : '🎙'}
                 </button>
-                <button
-                  type="button"
-                  className="voice-btn scan-btn"
-                  aria-label="Scan a product barcode"
-                  title="Scan a product barcode"
-                  onClick={() => setScanning(true)}
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18">
-                    <path
-                      d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M7 8v8M10 8v8M13 8v8M16 8v8"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </button>
               </div>
               <button type="submit" className="add-btn">
                 Add
@@ -777,6 +777,19 @@ function ListApp({ user }) {
           <section className="list-frame">
             <div className="list-toolbar">
               <span>{selectedStore === 'All' ? 'All stores' : selectedStore}</span>
+              <button
+                type="button"
+                className={`check-btn${unassignedCount ? ' warn' : ''}${checkMode ? ' active' : ''}`}
+                aria-pressed={checkMode}
+                onClick={() => setCheckMode((value) => !value)}
+                title="Show items missing a store or a person"
+              >
+                {checkMode
+                  ? 'Show all'
+                  : unassignedCount
+                    ? `Check assignments · ${unassignedCount}`
+                    : 'All assigned ✓'}
+              </button>
               <button type="button" onClick={() => setShowDone((value) => !value)}>
                 {showDone ? 'Hide done' : 'Show done'}
               </button>
@@ -790,6 +803,7 @@ function ListApp({ user }) {
               <ul className="item-list">
                 {visibleItems
                   .filter((item) => (showDone ? true : item.status === 'needed'))
+                  .filter((item) => (checkMode ? item.status === 'needed' && missingFor(item).length > 0 : true))
                   .map((item) => (
                     <li key={item.id} className={`item-row status-${item.status}${item.status !== 'needed' ? ' done' : ''}`}>
                       <input
@@ -810,6 +824,80 @@ function ListApp({ user }) {
                             .filter(Boolean)
                             .join(' · ')}
                         </small>
+                        {item.status === 'needed' && missingFor(item).length > 0 && (
+                          <span className="missing-tags">
+                            {missingFor(item).map((m) => (
+                              <span key={m} className="missing-tag">
+                                {m === 'store' ? 'No store' : 'No person'}
+                              </span>
+                            ))}
+                          </span>
+                        )}
+                        {assignEditor?.id === item.id && (
+                          <div className="assign-editor">
+                            <label>
+                              Store
+                              <input
+                                type="text"
+                                list="store-suggestions-assign"
+                                value={assignEditor.store}
+                                onChange={(e) => setAssignEditor({ ...assignEditor, store: e.target.value })}
+                                placeholder="Store name"
+                                autoFocus
+                              />
+                            </label>
+                            <datalist id="store-suggestions-assign">
+                              {storeOptions
+                                .filter((st) => st !== 'All')
+                                .map((st) => (
+                                  <option key={st} value={st} />
+                                ))}
+                            </datalist>
+                            <span className="assign-label">For</span>
+                            <div className="chip-group">
+                              {Array.from(
+                                new Set([myName, ...members.map((m) => m.display_name)].filter(Boolean)),
+                              ).map((name) => (
+                                <button
+                                  key={name}
+                                  type="button"
+                                  className={assignEditor.person === name ? 'chip active' : 'chip'}
+                                  onClick={() => setAssignEditor({ ...assignEditor, person: name })}
+                                >
+                                  {name}
+                                </button>
+                              ))}
+                            </div>
+                            <input
+                              type="text"
+                              value={assignEditor.person}
+                              onChange={(e) => setAssignEditor({ ...assignEditor, person: e.target.value })}
+                              placeholder="Or type a name"
+                              aria-label="Who it's for"
+                            />
+                            <span className="assign-label">List</span>
+                            <div className="chip-group">
+                              {lists.map((list) => (
+                                <button
+                                  key={list.id}
+                                  type="button"
+                                  className={assignEditor.listId === list.id ? 'chip active' : 'chip'}
+                                  onClick={() => setAssignEditor({ ...assignEditor, listId: list.id })}
+                                >
+                                  {list.name}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="assign-buttons">
+                              <button type="button" className="next-btn" onClick={() => setAssignEditor(null)}>
+                                Cancel
+                              </button>
+                              <button type="button" className="next-btn primary" onClick={saveAssignment}>
+                                Save
+                              </button>
+                            </div>
+                          </div>
+                        )}
                         {item.status !== 'needed' && (
                           <span className={`status-badge ${item.status}`}>
                             {STATUS_LABEL[item.status]}
@@ -845,6 +933,24 @@ function ListApp({ user }) {
                         )}
                       </div>
                       <div className="item-actions">
+                        <button
+                          type="button"
+                          className={
+                            item.status === 'needed' && missingFor(item).length > 0 ? 'mini-btn assign warn' : 'mini-btn assign'
+                          }
+                          onClick={() =>
+                            assignEditor?.id === item.id
+                              ? setAssignEditor(null)
+                              : setAssignEditor({
+                                  id: item.id,
+                                  store: item.store || '',
+                                  person: item.assigned_to || '',
+                                  listId: item.list_id || currentListId,
+                                })
+                          }
+                        >
+                          Assign
+                        </button>
                         <button
                           type="button"
                           className={item.status === 'out' ? 'mini-btn active' : 'mini-btn'}
@@ -1034,8 +1140,6 @@ function ListApp({ user }) {
           </div>
         </div>
       )}
-
-      {scanning && <Scanner onResult={handleScanResult} onClose={() => setScanning(false)} />}
 
       {toast && (
         <div className="toast" role="status" aria-live="polite">
