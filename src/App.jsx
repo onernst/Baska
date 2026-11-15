@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Auth from './pages/Auth';
+import Scanner from './components/Scanner';
 import {
   createItem,
   createList,
+  deleteList,
   deleteItem,
   fetchItems,
   fetchLists,
@@ -10,7 +12,9 @@ import {
   fetchMyName,
   getSession,
   joinList,
+  leaveList,
   onAuthChange,
+  renameList,
   setItemStatus,
   shareLinkFor,
   signOut,
@@ -78,11 +82,17 @@ function ListApp({ user }) {
   const [showDone, setShowDone] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [listsOpen, setListsOpen] = useState(false);
+  const [editingList, setEditingList] = useState(null); // { id, name }
+  const [confirmingDelete, setConfirmingDelete] = useState(null); // list id
   const [isDark, setIsDark] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState('');
   const [addStep, setAddStep] = useState('idle');
   const [pendingItem, setPendingItem] = useState('');
   const [pendingStore, setPendingStore] = useState('');
+  const [pendingPerson, setPendingPerson] = useState('');
+  const [pendingListId, setPendingListId] = useState('');
+  const [scanning, setScanning] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [statusEditor, setStatusEditor] = useState(null); // { id, status, note }
   const [toast, setToast] = useState('');
@@ -200,6 +210,15 @@ function ListApp({ user }) {
     };
   }, [currentListId, refreshItems, showToast]);
 
+  useEffect(() => {
+    if (!listsOpen) return undefined;
+    const onKey = (event) => {
+      if (event.key === 'Escape') closeListManager();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [listsOpen]);
+
   const storeOptions = useMemo(() => {
     const fromItems = items.map((item) => item.store).filter(Boolean);
     return ['All', ...Array.from(new Set([...DEFAULT_STORES, ...fromItems]))];
@@ -239,23 +258,56 @@ function ListApp({ user }) {
     }
   }
 
-  function addItem(event) {
-    event.preventDefault();
-    const name = itemName.trim();
-    if (!name) return;
+  function startAddFlow(name) {
     setPendingItem(name);
     setPendingStore(selectedStore !== 'All' ? selectedStore : '');
+    setPendingPerson(myName);
+    setPendingListId(currentListId);
     setAddStep('store');
     setItemName('');
   }
 
+  function addItem(event) {
+    event.preventDefault();
+    const name = itemName.trim();
+    if (!name) return;
+    startAddFlow(name);
+  }
+
+  const handleScanResult = useCallback(
+    ({ code, name }) => {
+      setScanning(false);
+      if (name) {
+        startAddFlow(name);
+        showToast(`Scanned: ${name}`);
+      } else {
+        setItemName(code);
+        showToast('Product not found. Type its name, then tap Add.');
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [myName, currentListId, selectedStore],
+  );
+
+  function cancelAddFlow() {
+    setAddStep('idle');
+    setPendingItem('');
+  }
+
   async function submitAddedItem() {
+    const targetListId = pendingListId || currentListId;
     try {
-      const created = await createItem(currentListId, {
+      const created = await createItem(targetListId, {
         name: pendingItem,
         store: pendingStore.trim(),
+        assignedTo: pendingPerson.trim(),
       });
-      setItems((current) => [created, ...current.filter((i) => i.id !== created.id)]);
+      if (targetListId === currentListId) {
+        setItems((current) => [created, ...current.filter((i) => i.id !== created.id)]);
+      } else {
+        const target = lists.find((l) => l.id === targetListId);
+        showToast(`Added “${pendingItem}” to ${target ? target.name : 'the other list'}`);
+      }
       setPendingItem('');
       setPendingStore('');
       setAddStep('idle');
@@ -276,10 +328,11 @@ function ListApp({ user }) {
     }
   }
 
-  async function handleShare() {
-    if (!currentList) return;
-    const url = shareLinkFor(currentList);
-    const text = `Join my Baska list “${currentList.name}” so we can shop together:`;
+  async function handleShare(list = currentList) {
+    if (!list || typeof list !== 'object' || !list.share_code) list = currentList;
+    if (!list) return;
+    const url = shareLinkFor(list);
+    const text = `Join my Baska list “${list.name}” so we can shop together:`;
     try {
       if (navigator.share) {
         await navigator.share({ title: 'Baska list', text, url });
@@ -294,6 +347,45 @@ function ListApp({ user }) {
     } catch {
       window.prompt('Copy this link and send it:', url);
     }
+  }
+
+  async function saveListName() {
+    if (!editingList) return;
+    const name = editingList.name.trim();
+    if (!name) return;
+    try {
+      await renameList(editingList.id, name);
+      setLists(await fetchLists());
+      setEditingList(null);
+      showToast('List renamed');
+    } catch (err) {
+      showToast(`Couldn’t rename: ${err.message}`);
+    }
+  }
+
+  async function removeList(list) {
+    const isOwner = list.owner_id === user.id;
+    try {
+      if (isOwner) await deleteList(list.id);
+      else await leaveList(list.id, user.id);
+      let remaining = await fetchLists();
+      if (remaining.length === 0) {
+        await createList('Shopping list');
+        remaining = await fetchLists();
+      }
+      setLists(remaining);
+      if (list.id === currentListId) setCurrentListId(remaining[0].id);
+      setConfirmingDelete(null);
+      showToast(isOwner ? `Deleted “${list.name}”` : `You left “${list.name}”`);
+    } catch (err) {
+      showToast(`Couldn’t ${isOwner ? 'delete' : 'leave'}: ${err.message}`);
+    }
+  }
+
+  function closeListManager() {
+    setListsOpen(false);
+    setEditingList(null);
+    setConfirmingDelete(null);
   }
 
   function handlePhotoChange(event) {
@@ -473,7 +565,7 @@ function ListApp({ user }) {
                 </li>
               ))}
             </ul>
-            <button type="button" className="share-btn" onClick={handleShare}>
+            <button type="button" className="share-btn" onClick={() => handleShare()}>
               Invite someone
             </button>
           </section>
@@ -501,7 +593,7 @@ function ListApp({ user }) {
               <button type="button" className="ghost-btn" onClick={handleNewList}>
                 + New list
               </button>
-              <button type="button" className="share-btn" onClick={handleShare}>
+              <button type="button" className="share-btn" onClick={() => handleShare()}>
                 Share
               </button>
             </div>
@@ -531,6 +623,23 @@ function ListApp({ user }) {
                 >
                   {isListening ? '◉' : '🎙'}
                 </button>
+                <button
+                  type="button"
+                  className="voice-btn scan-btn"
+                  aria-label="Scan a product barcode"
+                  title="Scan a product barcode"
+                  onClick={() => setScanning(true)}
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18">
+                    <path
+                      d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M7 8v8M10 8v8M13 8v8M16 8v8"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
               </div>
               <button type="submit" className="add-btn">
                 Add
@@ -538,32 +647,130 @@ function ListApp({ user }) {
             </div>
           </form>
 
-          {addStep === 'store' && (
+          {addStep !== 'idle' && (
             <div className="add-flow">
-              <label className="flow-label">Which store is “{pendingItem}” for? (optional)</label>
-              <div className="flow-row">
-                <input
-                  type="text"
-                  list="store-suggestions"
-                  value={pendingStore}
-                  onChange={(event) => setPendingStore(event.target.value)}
-                  placeholder="Store name"
-                  autoFocus
-                />
-                <datalist id="store-suggestions">
-                  {storeOptions
-                    .filter((s) => s !== 'All')
-                    .map((s) => (
-                      <option key={s} value={s} />
-                    ))}
-                </datalist>
-                <button type="button" className="next-btn" onClick={() => setAddStep('idle')}>
-                  Cancel
-                </button>
-                <button type="button" className="next-btn primary" onClick={submitAddedItem}>
-                  Add item
-                </button>
+              <div className="flow-steps" aria-hidden="true">
+                {['store', 'person', 'list'].map((step, i) => (
+                  <span
+                    key={step}
+                    className={
+                      step === addStep
+                        ? 'flow-dot active'
+                        : ['store', 'person', 'list'].indexOf(addStep) > i
+                          ? 'flow-dot done'
+                          : 'flow-dot'
+                    }
+                  />
+                ))}
               </div>
+
+              {addStep === 'store' && (
+                <>
+                  <label className="flow-label" htmlFor="flow-store">
+                    Which store is “{pendingItem}” for? <span className="flow-hint">(optional)</span>
+                  </label>
+                  <div className="flow-row">
+                    <input
+                      id="flow-store"
+                      type="text"
+                      list="store-suggestions"
+                      value={pendingStore}
+                      onChange={(event) => setPendingStore(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          setAddStep('person');
+                        }
+                      }}
+                      placeholder="Store name"
+                      autoFocus
+                    />
+                    <datalist id="store-suggestions">
+                      {storeOptions
+                        .filter((s) => s !== 'All')
+                        .map((s) => (
+                          <option key={s} value={s} />
+                        ))}
+                    </datalist>
+                    <button type="button" className="next-btn" onClick={cancelAddFlow}>
+                      Cancel
+                    </button>
+                    <button type="button" className="next-btn primary" onClick={() => setAddStep('person')}>
+                      Next
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {addStep === 'person' && (
+                <>
+                  <label className="flow-label" htmlFor="flow-person">
+                    Who is “{pendingItem}” for?
+                  </label>
+                  <div className="chip-group flow-chips">
+                    {Array.from(new Set([myName, ...members.map((m) => m.display_name)].filter(Boolean))).map(
+                      (name) => (
+                        <button
+                          key={name}
+                          type="button"
+                          className={pendingPerson === name ? 'chip active' : 'chip'}
+                          onClick={() => setPendingPerson(name)}
+                        >
+                          {name}
+                          {name === myName ? ' (me)' : ''}
+                        </button>
+                      ),
+                    )}
+                  </div>
+                  <div className="flow-row">
+                    <input
+                      id="flow-person"
+                      type="text"
+                      value={pendingPerson}
+                      onChange={(event) => setPendingPerson(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          setAddStep('list');
+                        }
+                      }}
+                      placeholder="Or type a name"
+                    />
+                    <button type="button" className="next-btn" onClick={() => setAddStep('store')}>
+                      Back
+                    </button>
+                    <button type="button" className="next-btn primary" onClick={() => setAddStep('list')}>
+                      Next
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {addStep === 'list' && (
+                <>
+                  <span className="flow-label">Which list should “{pendingItem}” go on?</span>
+                  <div className="chip-group flow-chips">
+                    {lists.map((list) => (
+                      <button
+                        key={list.id}
+                        type="button"
+                        className={pendingListId === list.id ? 'chip active' : 'chip'}
+                        onClick={() => setPendingListId(list.id)}
+                      >
+                        {list.name}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flow-row flow-row-end">
+                    <button type="button" className="next-btn" onClick={() => setAddStep('person')}>
+                      Back
+                    </button>
+                    <button type="button" className="next-btn primary" onClick={submitAddedItem}>
+                      Add item
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -594,7 +801,12 @@ function ListApp({ user }) {
                       <div className="meta">
                         <strong>{item.name}</strong>
                         <small>
-                          {[item.qty > 1 ? `×${item.qty}` : '', item.store, item.added_by_name && `added by ${item.added_by_name}`]
+                          {[
+                            item.qty > 1 ? `×${item.qty}` : '',
+                            item.store,
+                            item.assigned_to && `for ${item.assigned_to}`,
+                            item.added_by_name && `added by ${item.added_by_name}`,
+                          ]
                             .filter(Boolean)
                             .join(' · ')}
                         </small>
@@ -689,16 +901,141 @@ function ListApp({ user }) {
       </div>
 
       <nav className="bottom-bar" aria-label="Bottom navigation">
-        <button type="button" className="bottom-tab active" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-          <span>List</span>
+        <button
+          type="button"
+          className={listsOpen ? 'bottom-tab active' : 'bottom-tab'}
+          aria-expanded={listsOpen}
+          onClick={() => (listsOpen ? closeListManager() : setListsOpen(true))}
+        >
+          <span>Lists</span>
         </button>
-        <button type="button" className="bottom-tab" onClick={handleShare}>
+        <button type="button" className="bottom-tab" onClick={() => handleShare()}>
           <span>Share</span>
         </button>
         <button type="button" className="bottom-tab" onClick={handleNewList}>
           <span>New list</span>
         </button>
       </nav>
+
+      {listsOpen && (
+        <div className="sheet-backdrop" onClick={closeListManager}>
+          <div
+            className="list-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Manage lists"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="list-sheet-head">
+              <h2>My lists</h2>
+              <button type="button" className="ghost-btn small" onClick={handleNewList}>
+                + New list
+              </button>
+              <button type="button" className="sheet-close" aria-label="Close" onClick={closeListManager}>
+                ×
+              </button>
+            </div>
+
+            <ul className="manage-list">
+              {lists.map((list) => {
+                const isOwner = list.owner_id === user.id;
+                const isCurrent = list.id === currentListId;
+                const isEditing = editingList?.id === list.id;
+                const isConfirming = confirmingDelete === list.id;
+                return (
+                  <li key={list.id} className={isCurrent ? 'manage-row current' : 'manage-row'}>
+                    {isEditing ? (
+                      <form
+                        className="manage-edit"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          saveListName();
+                        }}
+                      >
+                        <input
+                          type="text"
+                          value={editingList.name}
+                          onChange={(event) => setEditingList({ ...editingList, name: event.target.value })}
+                          aria-label="List name"
+                          autoFocus
+                        />
+                        <button type="submit" className="mini-btn save">
+                          Save
+                        </button>
+                        <button type="button" className="mini-btn" onClick={() => setEditingList(null)}>
+                          Cancel
+                        </button>
+                      </form>
+                    ) : isConfirming ? (
+                      <div className="manage-confirm">
+                        <span>
+                          {isOwner
+                            ? `Delete “${list.name}” and all its items for everyone?`
+                            : `Leave “${list.name}”? You’ll need a new invite to rejoin.`}
+                        </span>
+                        <div className="manage-actions">
+                          <button type="button" className="mini-btn danger" onClick={() => removeList(list)}>
+                            {isOwner ? 'Delete' : 'Leave'}
+                          </button>
+                          <button type="button" className="mini-btn" onClick={() => setConfirmingDelete(null)}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="manage-name"
+                          onClick={() => {
+                            setCurrentListId(list.id);
+                            closeListManager();
+                          }}
+                        >
+                          <strong>{list.name}</strong>
+                          <small>
+                            {isCurrent ? 'Open now' : 'Tap to open'}
+                            {isOwner ? '' : ' · shared with you'}
+                          </small>
+                        </button>
+                        <div className="manage-actions">
+                          {isOwner && (
+                            <button
+                              type="button"
+                              className="mini-btn"
+                              onClick={() => {
+                                setConfirmingDelete(null);
+                                setEditingList({ id: list.id, name: list.name });
+                              }}
+                            >
+                              Edit
+                            </button>
+                          )}
+                          <button type="button" className="mini-btn" onClick={() => handleShare(list)}>
+                            Share
+                          </button>
+                          <button
+                            type="button"
+                            className="mini-btn danger"
+                            onClick={() => {
+                              setEditingList(null);
+                              setConfirmingDelete(list.id);
+                            }}
+                          >
+                            {isOwner ? 'Delete' : 'Leave'}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {scanning && <Scanner onResult={handleScanResult} onClose={() => setScanning(false)} />}
 
       {toast && (
         <div className="toast" role="status" aria-live="polite">

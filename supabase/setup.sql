@@ -70,6 +70,9 @@ create table if not exists public.items (
   updated_at timestamptz not null default now()
 );
 
+-- Who the item is for (added later; safe to run on an existing database)
+alter table public.items add column if not exists assigned_to text not null default '';
+
 create index if not exists items_list_id_idx on public.items (list_id);
 
 -- Stamp who added / last updated an item, and when

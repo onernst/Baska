@@ -56,6 +56,20 @@ export async function createList(name) {
   return check(await supabase.rpc('create_list', { p_name: name }));
 }
 
+export async function renameList(id, name) {
+  return check(
+    await supabase.from('lists').update({ name: name.trim() }).eq('id', id).select().single(),
+  );
+}
+
+export async function deleteList(id) {
+  check(await supabase.from('lists').delete().eq('id', id));
+}
+
+export async function leaveList(id, userId) {
+  check(await supabase.from('list_members').delete().eq('list_id', id).eq('user_id', userId));
+}
+
 export async function joinList(code) {
   return check(await supabase.rpc('join_list', { p_code: code }));
 }
@@ -85,14 +99,15 @@ export async function fetchItems(listId) {
   );
 }
 
-export async function createItem(listId, { name, qty = 1, store = '', note = '' }) {
-  return check(
-    await supabase
-      .from('items')
-      .insert({ list_id: listId, name, qty, store, note })
-      .select()
-      .single(),
-  );
+export async function createItem(listId, { name, qty = 1, store = '', note = '', assignedTo = '' }) {
+  const row = { list_id: listId, name, qty, store, note, assigned_to: assignedTo };
+  let result = await supabase.from('items').insert(row).select().single();
+  // Database not updated yet for "who it's for": save the item without it.
+  if (result.error && /assigned_to/.test(result.error.message)) {
+    delete row.assigned_to;
+    result = await supabase.from('items').insert(row).select().single();
+  }
+  return check(result);
 }
 
 export async function setItemStatus(id, status, statusNote = '') {
