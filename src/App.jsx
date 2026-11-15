@@ -401,15 +401,29 @@ function ListApp({ user }) {
         <aside className="sidebar">
           <section className="panel summary-panel">
             <h2>Summary</h2>
-            <div className="stats-split">
-              <div className="stats-block green">
-                <label>On list</label>
-                <strong>{stats.total}</strong>
-              </div>
-              <div className="stats-block purple">
-                <label>Done</label>
-                <strong>{stats.done}</strong>
-              </div>
+            <div className="stats">
+              {[
+                { label: 'On list', value: stats.total },
+                { label: 'Done', value: stats.done },
+                {
+                  label: 'Complete',
+                  value: stats.total ? Math.round((stats.done / stats.total) * 100) : 0,
+                  suffix: 'percent',
+                },
+              ].map((stat) => (
+                <div
+                  key={`${stat.label}-${stat.value}`}
+                  className="stat"
+                  style={{ '--target': stat.value }}
+                >
+                  <span className={`figure${stat.suffix ? ` ${stat.suffix}` : ''}`} aria-hidden="true" />
+                  <span className="sr-only">
+                    {stat.value}
+                    {stat.suffix === 'percent' ? '%' : ''}
+                  </span>
+                  <p>{stat.label}</p>
+                </div>
+              ))}
             </div>
           </section>
 
