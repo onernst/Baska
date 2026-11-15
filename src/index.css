@@ -295,20 +295,23 @@ body[data-theme='dark'] .stats-grid div {
 
 .summary-panel {
   margin-bottom: 0;
-  padding: 6px 10px 4px;
+  padding: 4px 8px 3px;
+  border-radius: 0;
+  box-shadow: 0 3px 10px rgba(18, 23, 31, 0.045);
 }
 
 .summary-panel h2 {
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .summary-panel .stats-block {
-  min-height: 36px;
-  padding: 1px 8px;
+  min-height: 30px;
+  padding: 0 7px;
+  border-radius: 0;
 }
 
 .summary-panel .stats-block label {
-  margin-bottom: 1px;
+  margin-bottom: 0;
 }
 
 .store-panel {
@@ -324,7 +327,7 @@ body[data-theme='dark'] .stats-grid div {
 .stats-split {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 0;
 }
 
 .stats-block {

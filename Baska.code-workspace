@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "Baska"
+		},
+		{
+			"path": "Baska/Baska"
+		}
+	],
+	"settings": {
+		"editor.inlineSuggest.enabled": true
+	}
+}
