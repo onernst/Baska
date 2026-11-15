@@ -1169,18 +1169,20 @@ body[data-theme='dark'] .stats-grid div {
 
 .list-picker select {
   font: inherit;
-  font-size: 1.5rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: var(--text);
-  background: transparent;
-  border: none;
-  padding: 0;
-  max-width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 12px;
+  max-width: 220px;
   cursor: pointer;
 }
 
 .list-picker p {
-  margin: 4px 0 0;
+  margin: 3px 0 0 4px;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
@@ -1371,12 +1373,36 @@ body[data-theme='dark'] .status-badge.substituted {
   color: #f8fafc;
   border-color: rgba(255, 255, 255, 0.08);
   border-radius: 18px;
-  padding: 14px;
+  padding: 12px 14px 14px;
 }
 
-.summary-panel h2 {
+.summary-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.summary-panel .summary-toggle h2 {
   color: #f8fafc;
-  margin-bottom: 10px;
+  margin: 0;
+}
+
+.summary-chevron {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  transition: transform 0.2s ease;
+}
+
+.summary-panel.open .summary-chevron {
+  transform: rotate(180deg);
 }
 
 .summary-panel .stats {
@@ -1384,26 +1410,31 @@ body[data-theme='dark'] .status-badge.substituted {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   width: 100%;
+  cursor: pointer;
 }
 
 .summary-panel .stat {
-  background: linear-gradient(150deg, rgba(230, 126, 34, 0.85), rgba(231, 76, 60, 0.85));
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 14px;
   padding: 16px 4px;
   text-align: center;
-  --count: var(--target);
-  animation: count-up 2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  min-width: 0;
 }
 
-.summary-panel .stat:nth-child(2) {
-  animation-duration: 1.4s;
+.summary-panel .stat.tone-orange {
+  background: linear-gradient(150deg, rgba(230, 126, 34, 0.85), rgba(211, 104, 30, 0.85));
+}
+
+.summary-panel .stat.tone-red {
+  background: linear-gradient(150deg, rgba(230, 126, 34, 0.85), rgba(231, 76, 60, 0.85));
+}
+
+.summary-panel .stat.tone-green {
   background: linear-gradient(150deg, rgba(39, 174, 96, 0.85), rgba(30, 132, 73, 0.85));
 }
 
-.summary-panel .stat:nth-child(3) {
-  animation-duration: 1.7s;
-  /* green fills up to the % complete, orange-red shows what's left */
+/* green fills up to the % complete, orange-red shows what's left */
+.summary-panel .stat.tone-progress {
   background:
     linear-gradient(to top, rgba(39, 174, 96, 0.9) var(--pct, 0%), transparent var(--pct, 0%)),
     linear-gradient(150deg, rgba(230, 126, 34, 0.85), rgba(231, 76, 60, 0.85));
@@ -1415,33 +1446,42 @@ body[data-theme='dark'] .status-badge.substituted {
 
 .summary-panel .figure {
   display: block;
-  font-size: clamp(1.6rem, 4vw, 2.75rem);
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1;
   color: #ffffff;
-  counter-reset: figure var(--count);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.summary-panel .figure::before {
+.summary-panel .num {
+  --count: var(--target);
+  counter-reset: figure var(--count);
+  animation: count-up 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.summary-panel .num::before {
   content: counter(figure);
 }
 
-.summary-panel .figure.percent::after {
-  content: "%";
-  color: #fff3d6;
+.summary-panel .figure-sep {
+  margin: 0 1px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
 }
 
-.summary-panel .figure.plus::after {
-  content: "+";
-  color: #38bdf8;
+.summary-panel .figure-suffix {
+  color: #fff3d6;
 }
 
 .summary-panel .stat p {
   margin: 8px 0 0;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.88);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sr-only {
@@ -1454,7 +1494,10 @@ body[data-theme='dark'] .status-badge.substituted {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .summary-panel .stat {
+  .summary-panel .num {
     animation: none;
+  }
+  .summary-chevron {
+    transition: none;
   }
 }

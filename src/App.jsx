@@ -77,6 +77,7 @@ function ListApp({ user }) {
   const [itemName, setItemName] = useState('');
   const [showDone, setShowDone] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState('');
   const [addStep, setAddStep] = useState('idle');
@@ -399,35 +400,65 @@ function ListApp({ user }) {
 
       <div className="layout">
         <aside className="sidebar">
-          <section className="panel summary-panel">
-            <h2>Summary</h2>
-            <div className="stats">
-              {[
-                { label: 'On list', value: stats.total },
-                { label: 'Done', value: stats.done },
-                {
-                  label: 'Complete',
-                  value: stats.total ? Math.round((stats.done / stats.total) * 100) : 0,
-                  suffix: 'percent',
-                },
-              ].map((stat) => (
+          <section className={summaryOpen ? 'panel summary-panel open' : 'panel summary-panel'}>
+            <button
+              type="button"
+              className="summary-toggle"
+              aria-expanded={summaryOpen}
+              onClick={() => setSummaryOpen((open) => !open)}
+            >
+              <h2>Summary</h2>
+              <span className="summary-chevron" aria-hidden="true">
+                ▾
+              </span>
+            </button>
+            {(() => {
+              const percent = stats.total ? Math.round((stats.done / stats.total) * 100) : 0;
+              const cards = summaryOpen
+                ? [
+                    { key: 'complete', label: 'Complete', nums: [percent], percent: true, tone: 'progress' },
+                    { key: 'lists', label: lists.length === 1 ? 'List' : 'Lists', nums: [lists.length], tone: 'orange' },
+                    { key: 'onlist', label: 'On list', nums: [stats.total], tone: 'red' },
+                    { key: 'done', label: 'Done', nums: [stats.done], tone: 'green' },
+                    { key: 'tobuy', label: 'To buy', nums: [stats.pending], tone: 'orange' },
+                    { key: 'people', label: members.length === 1 ? 'Person' : 'People', nums: [members.length], tone: 'green' },
+                  ]
+                : [
+                    { key: 'complete', label: 'Complete', nums: [percent], percent: true, tone: 'progress' },
+                    { key: 'lists', label: lists.length === 1 ? 'List' : 'Lists', nums: [lists.length], tone: 'orange' },
+                    { key: 'doneof', label: 'Done', nums: [stats.done, stats.total], tone: 'green' },
+                  ];
+              return (
                 <div
-                  key={`${stat.label}-${stat.value}`}
-                  className="stat"
-                  style={{
-                    '--target': stat.value,
-                    ...(stat.suffix === 'percent' ? { '--pct': `${stat.value}%` } : {}),
-                  }}
+                  className="stats"
+                  onClick={() => setSummaryOpen((open) => !open)}
+                  title={summaryOpen ? 'Show less' : 'Show all stats'}
                 >
-                  <span className={`figure${stat.suffix ? ` ${stat.suffix}` : ''}`} aria-hidden="true" />
-                  <span className="sr-only">
-                    {stat.value}
-                    {stat.suffix === 'percent' ? '%' : ''}
-                  </span>
-                  <p>{stat.label}</p>
+                  {cards.map((card) => (
+                    <div
+                      key={`${card.key}-${card.nums.join('-')}`}
+                      className={`stat tone-${card.tone}`}
+                      style={card.percent ? { '--pct': `${percent}%` } : undefined}
+                    >
+                      <span className="figure" aria-hidden="true">
+                        {card.nums.map((n, i) => (
+                          <span key={i}>
+                            {i > 0 && <span className="figure-sep">/</span>}
+                            <span className="num" style={{ '--target': n }} />
+                          </span>
+                        ))}
+                        {card.percent && <span className="figure-suffix">%</span>}
+                      </span>
+                      <span className="sr-only">
+                        {card.nums.join(' of ')}
+                        {card.percent ? '%' : ''}
+                      </span>
+                      <p>{card.label}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              );
+            })()}
           </section>
 
           <section className="panel members-panel">
