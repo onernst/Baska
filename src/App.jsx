@@ -414,7 +414,10 @@ function ListApp({ user }) {
                 <div
                   key={`${stat.label}-${stat.value}`}
                   className="stat"
-                  style={{ '--target': stat.value }}
+                  style={{
+                    '--target': stat.value,
+                    ...(stat.suffix === 'percent' ? { '--pct': `${stat.value}%` } : {}),
+                  }}
                 >
                   <span className={`figure${stat.suffix ? ` ${stat.suffix}` : ''}`} aria-hidden="true" />
                   <span className="sr-only">

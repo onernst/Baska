@@ -1387,7 +1387,8 @@ body[data-theme='dark'] .status-badge.substituted {
 }
 
 .summary-panel .stat {
-  background: rgba(30, 41, 59, 0.6);
+  background: linear-gradient(150deg, rgba(230, 126, 34, 0.85), rgba(231, 76, 60, 0.85));
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 14px;
   padding: 16px 4px;
   text-align: center;
@@ -1397,10 +1398,15 @@ body[data-theme='dark'] .status-badge.substituted {
 
 .summary-panel .stat:nth-child(2) {
   animation-duration: 1.4s;
+  background: linear-gradient(150deg, rgba(39, 174, 96, 0.85), rgba(30, 132, 73, 0.85));
 }
 
 .summary-panel .stat:nth-child(3) {
   animation-duration: 1.7s;
+  /* green fills up to the % complete, orange-red shows what's left */
+  background:
+    linear-gradient(to top, rgba(39, 174, 96, 0.9) var(--pct, 0%), transparent var(--pct, 0%)),
+    linear-gradient(150deg, rgba(230, 126, 34, 0.85), rgba(231, 76, 60, 0.85));
 }
 
 @keyframes count-up {
@@ -1424,7 +1430,7 @@ body[data-theme='dark'] .status-badge.substituted {
 
 .summary-panel .figure.percent::after {
   content: "%";
-  color: #38bdf8;
+  color: #fff3d6;
 }
 
 .summary-panel .figure.plus::after {
@@ -1435,7 +1441,7 @@ body[data-theme='dark'] .status-badge.substituted {
 .summary-panel .stat p {
   margin: 8px 0 0;
   font-size: 0.8125rem;
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.88);
 }
 
 .sr-only {
