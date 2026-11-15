@@ -295,7 +295,20 @@ body[data-theme='dark'] .stats-grid div {
 
 .summary-panel {
   margin-bottom: 0;
-  padding: 10px 10px 8px;
+  padding: 6px 10px 4px;
+}
+
+.summary-panel h2 {
+  margin-bottom: 4px;
+}
+
+.summary-panel .stats-block {
+  min-height: 36px;
+  padding: 1px 8px;
+}
+
+.summary-panel .stats-block label {
+  margin-bottom: 1px;
 }
 
 .store-panel {
